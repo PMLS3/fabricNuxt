@@ -1,0 +1,227 @@
+<template>
+  <!-- NOTIFICATIONS -->
+  <vs-dropdown vs-custom-content vs-trigger-click class="cursor-pointer">
+    <feather-icon
+      icon="BellIcon"
+      class="mt-1 mr-2 cursor-pointer sm:mr-6"
+      :badge="unreadNotifications.length"
+    />
+
+    <vs-dropdown-menu
+      class="notification-dropdown dropdown-custom vx-navbar-dropdown"
+    >
+      <div class="p-5 text-center text-white notification-top bg-primary">
+        <h3 class="text-white">{{ unreadNotifications.length }} New</h3>
+        <p class="opacity-75">App Notifications</p>
+      </div>
+
+      <!-- <VuePerfectScrollbar ref="mainSidebarPs" class="p-0 mb-10 scroll-area--nofications-dropdown" :settings="settings" :key="$vs.rtl"> -->
+      <ul class="bordered-items">
+        <li
+          v-for="ntf in unreadNotifications"
+          :key="ntf.index"
+          class="flex justify-between px-4 py-4 cursor-pointer notification"
+          @click="notificationDelete(ntf)"
+        >
+          <div class="flex items-start">
+            <feather-icon
+              :icon="ntf.icon"
+              :svg-classes="[
+                `text-${ntf.category}`,
+                'stroke-current mr-1 h-6 w-6'
+              ]"
+            ></feather-icon>
+            <div class="mx-2">
+              <span
+                class="block font-medium notification-title"
+                :class="[`text-${ntf.category}`]"
+                >{{ ntf.title }}</span
+              >
+              <small>{{ ntf.msg }}</small>
+            </div>
+          </div>
+          <small class="mt-1 whitespace-no-wrap">{{
+            elapsedTime(ntf.time)
+          }}</small>
+        </li>
+      </ul>
+      <!-- </VuePerfectScrollbar> -->
+
+      <div
+        class="fixed bottom-0 w-full p-2 font-semibold text-center border border-b-0 border-l-0 border-r-0 border-solid rounded-b-lg cursor-pointer checkout-footer text-primary d-theme-border-grey-light"
+      >
+        <span>View All Notifications</span>
+      </div>
+    </vs-dropdown-menu>
+  </vs-dropdown>
+</template>
+
+<script>
+// import VuePerfectScrollbar from 'vue-perfect-scrollbar'
+import firebase from 'firebase'
+export default {
+  components: {
+    // VuePerfectScrollbar
+  },
+  data() {
+    return {
+      unreadNotifications: [
+        // {
+        //   index    : 0,
+        //   title    : 'New Message',
+        //   msg      : 'Are your going to meet me tonight?',
+        //   icon     : 'MessageSquareIcon',
+        //   time     : this.randomDate({sec: 10}),
+        //   category : 'primary'
+        // },
+        // { index    : 1,
+        //   title    : 'New Order Recieved',
+        //   msg      : 'You got new order of goods.',
+        //   icon     : 'PackageIcon',
+        //   time     : Date.now(),
+        //   category : 'success'
+        // },
+        // { index    : 2,
+        //   title    : 'Server Limit Reached!',
+        //   msg      : 'Server have 99% CPU usage.',
+        //   icon     : 'AlertOctagonIcon',
+        //   time     : this.randomDate({min: 1}),
+        //   category : 'danger'
+        // },
+        // { index    : 3,
+        //   title    : 'New Mail From Peter',
+        //   msg      : 'Cake sesame snaps cupcake',
+        //   icon     : 'MailIcon',
+        //   time     : this.randomDate({min: 6}),
+        //   category : 'primary'
+        // },
+        // { index    : 4,
+        //   title    : 'Bruce\'s Party',
+        //   msg      : 'Chocolate cake oat cake tiramisu',
+        //   icon     : 'CalendarIcon',
+        //   time     : this.randomDate({hr: 2}),
+        //   category : 'warning'
+        // },
+      ],
+      settings: {
+        maxScrollbarLength: 60,
+        wheelSpeed: 0.6
+      }
+    }
+  },
+  computed: {
+    resellerName() {
+      return this.$store.getters['app/resellerName']
+    },
+    companyDetails() {
+      return this.$store.getters['app/companyDetails']
+    }
+  },
+  mounted() {
+    const vm = this
+    const resellerName = this.resellerName
+    const companyDetails = this.companyDetails
+    firebase.auth().onAuthStateChanged(function(user) {
+      if (user) {
+        const refff = vm.$fireStore
+          .collection(resellerName)
+          .doc(companyDetails.id)
+          .collection('users')
+          .doc(firebase.auth().currentUser.uid)
+          .collection('notification')
+
+        refff.onSnapshot((snapshot) => {
+          snapshot.docChanges().forEach((change) => {
+            const doc = change.doc
+            if (change.type === 'added') {
+              vm.unreadNotifications.push({
+                id: doc.id,
+                index: doc.data().index,
+                title: doc.data().title,
+                msg: doc.data().msg,
+                icon: doc.data().icon,
+                time: doc.data().time,
+                category: doc.data().category
+              })
+            }
+          })
+        })
+      }
+    })
+  },
+  methods: {
+    notificationDelete(ntf) {
+      const vm = this
+
+      this.$fireStore
+        .collection(this.resellerName)
+        .doc(this.companyDetails.id)
+        .collection('users')
+        .doc(firebase.auth().currentUser.uid)
+        .collection('notification')
+        .doc(ntf.id)
+        .delete()
+        .then(function() {
+          vm.successDelete()
+        })
+        .catch()
+
+      const myArray = this.unreadNotifications.filter(function(obj) {
+        return obj.id !== ntf.id
+      })
+      this.unreadNotifications = myArray
+    },
+    successDelete() {
+      this.$vs.notify({
+        color: 'red',
+        title: 'Delete Success',
+        text: 'Whoop whoop, been deleted'
+      })
+    },
+    elapsedTime(startTime) {
+      const x = new Date(startTime)
+      const now = new Date()
+      let timeDiff = now - x
+      timeDiff /= 1000
+
+      const seconds = Math.round(timeDiff)
+      timeDiff = Math.floor(timeDiff / 60)
+
+      const minutes = Math.round(timeDiff % 60)
+      timeDiff = Math.floor(timeDiff / 60)
+
+      const hours = Math.round(timeDiff % 24)
+      timeDiff = Math.floor(timeDiff / 24)
+
+      const days = Math.round(timeDiff % 365)
+      timeDiff = Math.floor(timeDiff / 365)
+
+      const years = timeDiff
+
+      if (years > 0) {
+        return years + (years > 1 ? ' Years ' : ' Year ') + 'ago'
+      } else if (days > 0) {
+        return days + (days > 1 ? ' Days ' : ' Day ') + 'ago'
+      } else if (hours > 0) {
+        return hours + (hours > 1 ? ' Hrs ' : ' Hour ') + 'ago'
+      } else if (minutes > 0) {
+        return minutes + (minutes > 1 ? ' Mins ' : ' Min ') + 'ago'
+      } else if (seconds > 0) {
+        return seconds + (seconds > 1 ? ' sec ago' : 'just now')
+      }
+
+      return 'Just Now'
+    },
+    // Method for creating dummy notification time
+    randomDate({ hr, min, sec }) {
+      const date = new Date()
+
+      if (hr) date.setHours(date.getHours() - hr)
+      if (min) date.setMinutes(date.getMinutes() - min)
+      if (sec) date.setSeconds(date.getSeconds() - sec)
+
+      return date
+    }
+  }
+}
+</script>
