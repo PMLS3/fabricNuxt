@@ -5,6 +5,9 @@
     {{ currentMode }}
     <input v-model="colorPick" type="color" />
     <vs-button @click="clearCanvas(canvas)">Clear</vs-button>
+
+    <vs-button @click="createRect()">Rect</vs-button
+    ><vs-button @click="createCirc()">Circ</vs-button>
     <canvas id="canvas"></canvas>
   </div>
 </template>
@@ -28,6 +31,49 @@ export default {
     }
   },
   methods: {
+    createRect() {
+      const canvCenter = this.canvas.getCenter()
+      console.log('canvCenter', canvCenter)
+      const rect = new fabric.Rect({
+        width: 100,
+        height: 100,
+        fill: 'green',
+        left: canvCenter.left,
+        top: -50,
+        originX: 'center',
+        originY: 'center',
+        cornerColor: 'white'
+      })
+      this.canvas.add(rect)
+      rect.animate('top', canvCenter.top, {
+        onChange: this.canvas.renderAll.bind(this.canvas)
+      })
+    },
+    createCirc() {
+      const canvCenter = this.canvas.getCenter()
+      console.log('canvCenter', canvCenter)
+      const circl = new fabric.Circle({
+        radius: 50,
+
+        fill: 'red',
+        left: canvCenter.left,
+        top: -50,
+        originX: 'center',
+        originY: 'center',
+        cornerColor: 'white'
+      })
+      this.canvas.add(circl)
+      circl.animate('top', this.canvas.height - 50, {
+        onChange: this.canvas.renderAll.bind(this.canvas),
+        onComplete: () => {
+          circl.animate('top', canvCenter.top, {
+            onChange: this.canvas.renderAll.bind(this.canvas),
+            easing: fabric.util.ease.easeOutBounce,
+            duration: 200
+          })
+        }
+      })
+    },
     toggleMode(mode) {
       if (mode === this.currentMode) {
         this.currentMode = ''
@@ -106,8 +152,8 @@ export default {
 
     const initCanvas = id => {
       return new fabric.Canvas(id, {
-        width: 2500,
-        height: 2500,
+        width: 500,
+        height: 500,
         selection: this.selection
       })
     }
